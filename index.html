@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Werkbank</title>
+<meta name="theme-color" content="#1a1f24">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Werkbank">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Werkbank – feste Seitenleiste mit Bereichen, Arbeitsfläche in der Mitte, Editor als Schublade rechts. Am Handy: Bereiche als Reiter oben. */
+:root {
+  --bg: #eef0ea;          /* Sporenweiß, leicht moosig */
+  --panel: #f8f9f5;
+  --sunk: #e3e6dd;
+  --ink: #1f2620;         /* Moos-Tinte */
+  --muted: #5d665d;
+  --line: #cfd4c8;
+  --accent: #9a6a12;      /* Pilz-Ocker */
+  --accent-ink: #ffffff;
+  --accent-soft: #f1e3c4;
+  --fest: #2f6b45;  --fest-soft: #d8eadc;
+  --offen: #a5560f; --offen-soft: #f6e0c8;
+  --idee: #4f4f9e;  --idee-soft: #e0e0f3;
+  --weg: #7a7f78;   --weg-soft: #e2e4df;
+  --shadow: 0 10px 30px rgba(31, 38, 32, .14);
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161a; --panel: #1a1f24; --sunk: #0d1013; --ink: #e6e9e2; --muted: #9aa39b; --line: #2c343a;
+    --accent: #e0a440; --accent-ink: #1a1305; --accent-soft: #3a2c12;
+    --fest: #7cc795; --fest-soft: #1d3326; --offen: #f0a35a; --offen-soft: #3b2614;
+    --idee: #a9a9f2; --idee-soft: #26264a; --weg: #8b918a; --weg-soft: #24282b;
+    --shadow: 0 10px 30px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161a; --panel: #1a1f24; --sunk: #0d1013; --ink: #e6e9e2; --muted: #9aa39b; --line: #2c343a;
+  --accent: #e0a440; --accent-ink: #1a1305; --accent-soft: #3a2c12;
+  --fest: #7cc795; --fest-soft: #1d3326; --offen: #f0a35a; --offen-soft: #3b2614;
+  --idee: #a9a9f2; --idee-soft: #26264a; --weg: #8b918a; --weg-soft: #24282b;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; }
+img { max-width: 100%; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.55;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+
+.app { display: grid; grid-template-columns: 250px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-height: 100%; }
+
+/* Kopfleiste */
+.top {
+  grid-column: 1 / -1; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; margin-right: 8px; }
+.brand b { font-family: var(--f-display); font-size: 1.25rem; letter-spacing: -.01em; }
+.brand small { font-family: var(--f-mono); font-size: .68rem; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.capture { flex: 1 1 320px; display: flex; gap: 8px; min-width: 0; }
+.capture input {
+  flex: 1; min-width: 0; padding: 10px 14px; border-radius: var(--r);
+  border: 2px solid var(--accent); background: var(--bg);
+}
+.capture input::placeholder { color: var(--muted); }
+.search { flex: 0 1 220px; min-width: 0; }
+.search input { width: 100%; padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--bg); }
+.btn {
+  border: 1px solid var(--line); background: var(--panel); border-radius: var(--r);
+  padding: 9px 14px; font-weight: 700; white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+.btn.ghost:hover { color: var(--ink); border-color: var(--line); }
+.btn.small { padding: 6px 10px; font-size: .88rem; }
+.btn.danger { color: var(--offen); }
+
+/* Seitenleiste */
+.side {
+  border-right: 1px solid var(--line); background: var(--panel);
+  padding-block: 16px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: 12px;
+  display: flex; flex-direction: column; gap: 4px; overflow-y: auto;
+}
+.side .label { font-family: var(--f-mono); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 12px 10px 4px; }
+.nav {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 9px 10px; border-radius: 8px; border: 0; background: transparent;
+}
+.nav:hover { background: var(--sunk); }
+.nav[aria-current="page"] { background: var(--accent-soft); font-weight: 700; }
+.nav .name { flex: 1; min-width: 0; }
+.nav .cnt { font-family: var(--f-mono); font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.nav .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--offen); flex: none; }
+.side .foot { margin-top: auto; padding: 16px 10px 4px; font-size: .8rem; color: var(--muted); display: flex; flex-direction: column; gap: 8px; }
+
+/* Arbeitsfläche */
+.main { padding-block: 24px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); min-width: 0; }
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+h1 { font-family: var(--f-display); font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.15; margin: 0; text-wrap: balance; letter-spacing: -.015em; }
+h2 { font-family: var(--f-display); font-size: 1.2rem; margin: 0; }
+.lede { color: var(--muted); margin: 6px 0 0; max-width: 62ch; }
+.head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.chipbtn { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 5px 12px; font-size: .88rem; }
+.chipbtn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* Karten */
+.list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 12px; }
+.card {
+  text-align: left; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 14px 16px; border-left: 5px solid var(--st, var(--line));
+}
+.card:hover { border-color: var(--muted); border-left-color: var(--st, var(--muted)); }
+.card .t { font-weight: 700; font-size: 1.02rem; line-height: 1.3; }
+.card .b { color: var(--muted); font-size: .92rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.card .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: auto; }
+.card.weg .t { text-decoration: line-through; color: var(--muted); }
+.tag {
+  font-family: var(--f-mono); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 4px; background: var(--sunk); color: var(--muted);
+}
+.st-fest { --st: var(--fest); } .st-offen { --st: var(--offen); } .st-idee { --st: var(--idee); } .st-verworfen { --st: var(--weg); }
+.tag.s { background: var(--st-soft); color: var(--st); font-weight: 500; }
+.st-fest .tag.s, .tag.s.st-fest { --st-soft: var(--fest-soft); }
+.st-offen .tag.s, .tag.s.st-offen { --st-soft: var(--offen-soft); }
+.st-idee .tag.s, .tag.s.st-idee { --st-soft: var(--idee-soft); }
+.st-verworfen .tag.s, .tag.s.st-verworfen { --st-soft: var(--weg-soft); }
+
+.empty { border: 2px dashed var(--line); border-radius: var(--r); padding: 28px; text-align: center; color: var(--muted); }
+
+/* Übersicht */
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.box.hero { border: 2px solid var(--accent); background: linear-gradient(var(--accent-soft), var(--panel) 70%); }
+.kicker { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.hero .q { font-family: var(--f-display); font-size: 1.35rem; line-height: 1.25; text-wrap: balance; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.stat { border-radius: 8px; padding: 10px 12px; background: var(--st-soft); color: var(--st); }
+.stat b { display: block; font-family: var(--f-display); font-size: 1.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: .82rem; font-weight: 700; }
+.stat.st-fest { --st-soft: var(--fest-soft); } .stat.st-offen { --st-soft: var(--offen-soft); }
+.stat.st-idee { --st-soft: var(--idee-soft); } .stat.st-verworfen { --st-soft: var(--weg-soft); }
+.areas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 8px; }
+.area { text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.area:hover { border-color: var(--muted); }
+.area b { font-size: .98rem; }
+.area span { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.recent { display: flex; flex-direction: column; gap: 2px; }
+.recent button { text-align: left; border: 0; background: transparent; padding: 8px 6px; border-radius: 6px; display: flex; gap: 10px; align-items: baseline; }
+.recent button:hover { background: var(--sunk); }
+.recent .when { font-family: var(--f-mono); font-size: .72rem; color: var(--muted); margin-left: auto; white-space: nowrap; }
+
+/* Timer */
+.timer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.timer .clock { font-family: var(--f-mono); font-size: 1.8rem; font-variant-numeric: tabular-nums; min-width: 5ch; }
+.bar { height: 6px; border-radius: 3px; background: var(--sunk); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); width: 0%; transition: width .5s linear; }
+
+/* Fokus */
+.focus { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.focus .q { font-family: var(--f-display); font-size: clamp(1.5rem, 3.4vw, 2.1rem); line-height: 1.2; text-wrap: balance; margin: 0; }
+.focus textarea { min-height: 220px; }
+.progress { font-family: var(--f-mono); font-size: .78rem; color: var(--muted); letter-spacing: .05em; }
+
+/* Editor-Schublade */
+.scrim { position: fixed; inset: 0; background: rgba(10, 12, 10, .35); z-index: 20; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); z-index: 21;
+  background: var(--panel); border-left: 1px solid var(--line); box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px);
+}
+.drawer .bar-top { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.drawer .bar-top .saved { font-family: var(--f-mono); font-size: .72rem; color: var(--muted); margin-right: auto; }
+.drawer .body { padding: 18px 20px 28px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex: 1; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+input.title-in { font-family: var(--f-display); font-size: 1.35rem; font-weight: 700; border: 0; border-bottom: 2px solid var(--line); background: transparent; padding: 6px 0; width: 100%; }
+input.title-in:focus { border-bottom-color: var(--accent); outline: none; }
+select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding: 10px 12px; }
+textarea { resize: vertical; min-height: 280px; line-height: 1.6; }
+.seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.seg button { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 8px 4px; font-size: .88rem; font-weight: 700; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--st-soft); color: var(--st); border-color: var(--st); }
+.seg .st-fest { --st-soft: var(--fest-soft); } .seg .st-offen { --st-soft: var(--offen-soft); }
+.seg .st-idee { --st-soft: var(--idee-soft); } .seg .st-verworfen { --st-soft: var(--weg-soft); }
+.hint { font-size: .85rem; color: var(--muted); }
+
+.banner { border-radius: var(--r); padding: 10px 14px; background: var(--offen-soft); color: var(--ink); font-size: .9rem; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 30;
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: .92rem; box-shadow: var(--shadow);
+}
+kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
+
+/* Passwortsperre */
+.lock { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: grid; place-items: center; padding: 16px; }
+.lockbox { width: min(380px, 100%); display: flex; flex-direction: column; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; box-shadow: var(--shadow); }
+.lockbox b { font-family: var(--f-display); font-size: 1.5rem; }
+.lockbox p { margin: 0; }
+.lockbox input[type="password"] { padding: 12px 14px; border-radius: var(--r); border: 2px solid var(--accent); background: var(--bg); }
+.lockbox .remember { display: flex; gap: 8px; align-items: center; font-size: .92rem; color: var(--muted); }
+
+/* Alles auf einer Seite */
+.doc { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+.doc .toc { display: flex; flex-wrap: wrap; gap: 6px; }
+.doc .toc a { color: var(--ink); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .88rem; background: var(--panel); }
+.doc .toc a:hover { border-color: var(--muted); }
+.doc section { display: flex; flex-direction: column; gap: 14px; scroll-margin-top: 90px; }
+.doc section > h2 { font-size: 1.5rem; padding-bottom: 6px; border-bottom: 2px solid var(--ink); }
+.doc .fact { display: flex; flex-direction: column; gap: 4px; }
+.doc .fact h3 { margin: 0; font-size: 1.05rem; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.doc .fact h3 button { all: unset; cursor: pointer; }
+.doc .fact h3 button:hover { text-decoration: underline; }
+.doc .fact p { margin: 0; white-space: pre-line; max-width: 68ch; }
+.doc .sub { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.doc ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.doc li button { all: unset; cursor: pointer; }
+.doc li button:hover { text-decoration: underline; }
+.doc .q li::marker { color: var(--offen); }
+.doc .i li::marker { color: var(--idee); }
+.doc .w li { color: var(--muted); text-decoration: line-through; }
+@media print {
+  .top, .side, .noprint, .scrim, .drawer, .toast { display: none !important; }
+  .app { display: block; } .main { padding: 0; } body { background: #fff; color: #000; }
+}
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side {
+    flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line);
+    padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .side .label, .side .foot { display: none; }
+  .nav { width: auto; white-space: nowrap; flex: none; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .search { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand"><b id="brandName">Werkbank</b><small id="brandSub">Buchprojekt</small></div>
+    <form class="capture" id="captureForm" autocomplete="off">
+      <input id="captureIn" type="text" placeholder="Gedanke parken … (Enter)" aria-label="Gedanken schnell notieren">
+      <button class="btn primary" type="submit">Parken</button>
+    </form>
+    <div class="search"><input id="searchIn" type="search" placeholder="Alles durchsuchen" aria-label="Alles durchsuchen"></div>
+  </header>
+
+  <nav class="side" id="side" aria-label="Bereiche"></nav>
+
+  <main class="main"><div class="wrap" id="view"></div></main>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Eintrag bearbeiten">
+  <div class="bar-top">
+    <span class="saved" id="savedState">Gespeichert</span>
+    <button class="btn small danger" id="delBtn" type="button">Löschen</button>
+    <button class="btn small" id="closeBtn" type="button">Schließen <kbd>Esc</kbd></button>
+  </div>
+  <div class="body">
+    <input class="title-in" id="edTitle" type="text" placeholder="Titel" aria-label="Titel">
+    <div class="field"><span>Stand</span><div class="seg" id="edStatus"></div></div>
+    <label class="field"><span>Bereich</span><select id="edArea"></select></label>
+    <label class="field"><span>Notiz</span><textarea id="edBody" placeholder="Schreib einfach los. Wird automatisch gespeichert."></textarea></label>
+  </div>
+</aside>
+<div class="toast" id="toast" hidden></div>
+<div class="lock" id="lock" hidden>
+  <form class="lockbox" id="lockForm" autocomplete="on">
+    <b>Werkbank</b>
+    <p>Gib dein Passwort ein, um dein Projekt zu öffnen.</p>
+    <input type="password" id="lockPass" autocomplete="current-password" aria-label="Passwort" placeholder="Passwort">
+    <label class="remember"><input type="checkbox" id="lockRemember" checked> Auf diesem Gerät merken</label>
+    <button class="btn primary" type="submit">Öffnen</button>
+    <p class="hint" id="lockMsg" aria-live="polite"></p>
+  </form>
+</div>
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+
+<script>
+(() => {
+  let AREAS = [
+    { key: "inbox",      name: "Gedanken-Parkplatz", hint: "Alles, was dir schnell einfällt. Später einsortieren." },
+    { key: "manuskript", name: "Manuskript",          hint: "Deine geschriebenen Texte." },
+    { key: "recherche",  name: "Recherche",           hint: "Vorbilder, Quellen, Dinge zum Nachlesen." }
+  ];
+  const STATUS = [
+    { key: "fest",      name: "Festgelegt" },
+    { key: "offen",     name: "Offene Frage" },
+    { key: "idee",      name: "Idee" },
+    { key: "verworfen", name: "Verworfen" }
+  ];
+  const areaName = k => (AREAS.find(a => a.key === k) || AREAS[0]).name;
+  const statusName = k => (STATUS.find(s => s.key === k) || STATUS[2]).name;
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const $ = id => document.getElementById(id);
+
+  /* ---------- Speicher ---------- */
+  let entries = new Map();
+  let mode = "local";
+  const LS_KEY = "werkbank-entries", PASS_KEY = "werkbank-pass", TOMB_KEY = "werkbank-deleted", META_KEY = "werkbank-meta";
+  let META = { project: "", subtitle: "Buchprojekt", stamp: null };
+  const ls = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  function loadLocal() { try { const raw = ls.get(LS_KEY); if (raw) JSON.parse(raw).forEach(e => entries.set(e.id, e)); } catch (e) {} }
+  function saveLocal() { ls.set(LS_KEY, JSON.stringify([...entries.values()])); }
+  function tombs() { try { return JSON.parse(ls.get(TOMB_KEY) || "{}"); } catch (e) { return {}; } }
+  async function persist(e) { entries.set(e.id, e); saveLocal(); }
+  async function removeEntry(id) {
+    entries.delete(id); saveLocal();
+    const t = tombs(); t[id] = new Date().toISOString(); ls.set(TOMB_KEY, JSON.stringify(t));
+  }
+  const newId = () => "e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const ts = v => Date.parse(v) || 0;
+
+  /* Inhalte von Claude: verschlüsselt in data.enc.json (PBKDF2-SHA256 + AES-GCM) */
+  const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  async function decryptEnv(env, pass) {
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64d(env.salt), iterations: env.iter, hash: "SHA-256" },
+      base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64d(env.iv) }, key, b64d(env.ct));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+  function applyMeta(m) {
+    if (!m) return;
+    META = { ...META, ...m };
+    if (Array.isArray(m.areas) && m.areas.length) AREAS = m.areas;
+    ls.set(META_KEY, JSON.stringify(META));
+    $("brandName").textContent = (META.project ? META.project + " " : "") + "Werkbank";
+    $("brandSub").textContent = META.subtitle || "Buchprojekt";
+    document.title = $("brandName").textContent;
+    fillAreaSelect();
+  }
+  function merge(remote) {
+    const t = tombs(); let n = 0;
+    (remote.entries || []).forEach(e => {
+      if (!e || !e.id) return;
+      if (t[e.id] && ts(t[e.id]) >= ts(e.updated)) return;
+      const loc = entries.get(e.id);
+      if (!loc || ts(e.updated) > ts(loc.updated)) { entries.set(e.id, { ...e }); n++; }
+    });
+    Object.entries(remote.deleted || {}).forEach(([id, when]) => {
+      const loc = entries.get(id);
+      if (loc && ts(loc.updated) <= ts(when)) { entries.delete(id); n++; }
+    });
+    return n;
+  }
+  async function fetchEnv() {
+    try { const r = await fetch("data.enc.json", { cache: "no-store" }); if (r.ok) return await r.json(); } catch (e) {}
+    return null;
+  }
+  let remoteEnv = null, sessionPass = null;
+  async function unlock(pass, remember) {
+    if (!remoteEnv) return null;
+    let data;
+    try { data = await decryptEnv(remoteEnv, pass); } catch (e) { return null; }
+    const firstLoad = entries.size === 0;
+    applyMeta({ ...(data.meta || {}), stamp: remoteEnv.updated || null });
+    const n = merge(data);
+    saveLocal();
+    if (remember) ls.set(PASS_KEY, pass);
+    sessionPass = pass;
+    $("lock").hidden = true;
+    render();
+    return { n, firstLoad };
+  }
+  function showLock(msg) {
+    $("lock").hidden = false; $("lockMsg").textContent = msg || "";
+    setTimeout(() => $("lockPass").focus(), 50);
+  }
+  function reportMerge(r, quietIfNone) {
+    if (!r) return;
+    if (r.firstLoad) toast(`Projekt geladen: ${entries.size} Einträge`);
+    else if (r.n) toast(`${r.n} ${r.n === 1 ? "Änderung" : "Änderungen"} von Claude übernommen`);
+    else if (!quietIfNone) toast("Alles ist aktuell.");
+  }
+  async function initStore() {
+    loadLocal();
+    try { const m = JSON.parse(ls.get(META_KEY) || "null"); if (m) applyMeta(m); } catch (e) {}
+    remoteEnv = await fetchEnv();
+    if (!remoteEnv) {
+      if (entries.size) render();
+      else showLock("Keine Verbindung. Öffne die App einmal mit Internet, danach geht sie auch offline.");
+      return;
+    }
+    const saved = ls.get(PASS_KEY);
+    if (saved) { const r = await unlock(saved, true); if (r) return reportMerge(r, true); }
+    showLock();
+  }
+  async function checkUpdates() {
+    const env = await fetchEnv();
+    if (!env) { toast("Keine Verbindung. Versuch es später nochmal."); return; }
+    remoteEnv = env;
+    const pass = sessionPass || ls.get(PASS_KEY);
+    if (!pass) return showLock();
+    const r = await unlock(pass, false);
+    if (!r) return showLock("Das Passwort passt nicht mehr. Gib es neu ein.");
+    reportMerge(r, false);
+  }
+
+  /* ---------- Zustand ---------- */
+  let view = "uebersicht";
+  let filter = "alle";
+  let query = "";
+  let editingId = null;
+  let dirty = false;
+  let focusQueue = [];
+  let focusIdx = 0;
+
+  const sorted = list => list.sort((a, b) => (a.order || 0) - (b.order || 0) || String(a.title).localeCompare(String(b.title), "de"));
+  const inArea = k => sorted([...entries.values()].filter(e => e.area === k));
+  const byStatus = s => [...entries.values()].filter(e => e.status === s);
+
+  /* ---------- Seitenleiste ---------- */
+  function renderSide() {
+    const openCount = k => inArea(k).filter(e => e.status === "offen").length;
+    let h = `<button class="nav" data-go="uebersicht" ${view === "uebersicht" ? 'aria-current="page"' : ""}><span class="name">Übersicht</span></button>
+             <button class="nav" data-go="gesamt" ${view === "gesamt" ? 'aria-current="page"' : ""}><span class="name">Alles auf einer Seite</span></button>
+             <button class="nav" data-go="fokus" ${view === "fokus" ? 'aria-current="page"' : ""}><span class="name">Fokus: eine Frage</span><span class="cnt">${byStatus("offen").length}</span></button>
+             <div class="label">Bereiche</div>`;
+    AREAS.forEach(a => {
+      const n = inArea(a.key).length, o = openCount(a.key);
+      h += `<button class="nav" data-go="${a.key}" ${view === a.key ? 'aria-current="page"' : ""}>
+              <span class="name">${esc(a.name)}</span>${o ? `<span class="dot" title="${o} offen"></span>` : ""}<span class="cnt">${n}</span></button>`;
+    });
+    h += `<div class="foot">
+            <span>Gespeichert auf diesem Gerät.${META.stamp ? `<br>Stand von Claude: ${esc(new Date(META.stamp).toLocaleDateString("de-DE"))}` : ""}</span>
+            <button class="btn small" id="updBtn" type="button">Nach Updates suchen</button>
+            <button class="btn small" id="saveFileBtn" type="button">Projekt sichern</button>
+            <button class="btn small" id="openFileBtn" type="button">Projekt öffnen</button>
+            <button class="btn small ghost" id="backupBtn" type="button">Als Text exportieren</button>
+            <span><kbd>N</kbd> neuer Eintrag · <kbd>/</kbd> parken</span>
+          </div>`;
+    $("side").innerHTML = h;
+  }
+
+  /* ---------- Karten ---------- */
+  function cardHtml(e, showArea) {
+    const body = String(e.body || "").slice(0, 400);
+    return `<button class="card st-${esc(e.status)} ${e.status === "verworfen" ? "weg" : ""}" data-open="${esc(e.id)}">
+      <span class="t">${esc(e.title || "Ohne Titel")}</span>
+      ${body ? `<span class="b">${esc(body)}</span>` : ""}
+      <span class="meta"><span class="tag s st-${esc(e.status)}">${esc(statusName(e.status))}</span>${showArea ? `<span class="tag">${esc(areaName(e.area))}</span>` : ""}</span>
+    </button>`;
+  }
+
+  /* ---------- Ansichten ---------- */
+  function renderOverview() {
+    const all = [...entries.values()];
+    const open = sorted(byStatus("offen"));
+    const pick = open.length ? open[Math.floor(Date.now() / 86400000) % open.length] : null;
+    const recent = all.filter(e => e.updated).sort((a, b) => String(b.updated).localeCompare(String(a.updated))).slice(0, 5);
+    const inbox = inArea("inbox");
+    let h = `<div class="head"><div><h1>Wo warst du stehen geblieben?</h1>
+      <p class="lede">Hier siehst du auf einen Blick, was festgelegt ist und was noch offen ist. Fang mit einer einzigen Sache an.</p></div></div>`;
+    const lb = lastBackup();
+    if (!lb || Date.now() - lb > 7 * 86400000) h += `<div class="banner row"><span>${lb ? "Deine letzte Sicherung ist über eine Woche her." : "Du hast noch keine Sicherung gemacht."} Eine Sicherungsdatei schützt dein Projekt, falls der Browser seine Daten löscht.</span><button class="btn small primary" id="saveFileBtn2" type="button">Jetzt sichern</button></div>`;
+    if (!all.length && mode !== "loading") h += `<div class="empty">Noch nichts da. Parke oben deinen ersten Gedanken oder drück <kbd>N</kbd> für einen neuen Eintrag.</div>`;
+    h += `<div class="grid2">
+      <section class="box hero">
+        <span class="kicker">Eine Sache für jetzt</span>
+        ${pick ? `<div class="q">${esc(pick.title)}</div><span class="hint">${esc(areaName(pick.area))}</span>
+          <div class="row"><button class="btn primary" data-go="fokus">Fokus starten</button><button class="btn" data-open="${esc(pick.id)}">Nur ansehen</button></div>`
+        : `<div class="q">Keine offenen Fragen. Stark.</div>`}
+      </section>
+      <section class="box">
+        <span class="kicker">Schreib-Sprint</span>
+        <div class="timer"><span class="clock" id="clock">15:00</span>
+          <button class="btn small" data-timer="15">15 Min</button><button class="btn small" data-timer="25">25 Min</button><button class="btn small ghost" data-timer="0">Stopp</button></div>
+        <div class="bar"><i id="timerBar"></i></div>
+        <span class="hint">Ein kurzer Block, eine Aufgabe. Danach Pause.</span>
+      </section>
+    </div>
+    <section class="box"><div class="row"><h2>Deine Welt auf einer Seite</h2><span class="hint">Alles Festgelegte, alle Ideen und offenen Fragen, nach Bereichen sortiert.</span>
+      <button class="btn small" data-go="gesamt" style="margin-left:auto">Öffnen</button></div></section>
+    <div class="stats">${STATUS.map(s => `<button class="stat st-${s.key}" data-status-jump="${s.key}"><b>${byStatus(s.key).length}</b><span>${s.name}</span></button>`).join("")}</div>`;
+    if (inbox.length) h += `<section class="box"><div class="row"><h2>Im Parkplatz</h2><span class="hint">${inbox.length} ${inbox.length === 1 ? "Gedanke wartet" : "Gedanken warten"} aufs Einsortieren.</span>
+      <button class="btn small" data-go="inbox" style="margin-left:auto">Einsortieren</button></div></section>`;
+    h += `<section class="box"><h2>Bereiche</h2><div class="areas">${AREAS.filter(a => a.key !== "inbox").map(a => {
+      const l = inArea(a.key), o = l.filter(e => e.status === "offen").length, f = l.filter(e => e.status === "fest").length;
+      return `<button class="area" data-go="${a.key}"><b>${esc(a.name)}</b><span>${f} fest · ${o} offen</span></button>`;
+    }).join("")}</div></section>`;
+    if (recent.length) h += `<section class="box"><h2>Zuletzt bearbeitet</h2><div class="recent">${recent.map(e =>
+      `<button data-open="${esc(e.id)}"><span>${esc(e.title || "Ohne Titel")}</span><span class="when">${esc(ago(e.updated))}</span></button>`).join("")}</div></section>`;
+    return h;
+  }
+
+  function renderArea(key) {
+    const a = AREAS.find(x => x.key === key);
+    let list = inArea(key);
+    if (filter !== "alle") list = list.filter(e => e.status === filter);
+    let h = `<div class="head"><div><h1>${esc(a.name)}</h1><p class="lede">${esc(a.hint)}</p></div>
+      <button class="btn primary" data-new="${key}">Neuer Eintrag</button></div>
+      <div class="filters">${[{ key: "alle", name: "Alle" }, ...STATUS].map(s =>
+        `<button class="chipbtn" data-filter="${s.key}" aria-pressed="${filter === s.key}">${s.name}</button>`).join("")}</div>`;
+    h += list.length ? `<div class="list">${list.map(e => cardHtml(e, false)).join("")}</div>`
+      : `<div class="empty">${filter === "alle" ? "Hier ist noch nichts. Leg mit „Neuer Eintrag“ los." : "Nichts mit diesem Stand."}</div>`;
+    return h;
+  }
+
+  function renderAll() {
+    const slug = k => "b-" + k;
+    const areas = AREAS.filter(a => a.key !== "manuskript" && inArea(a.key).length);
+    const fest = byStatus("fest").length, offen = byStatus("offen").length;
+    let h = `<div class="doc">
+      <div class="head"><div><h1>Deine Welt auf einer Seite</h1>
+        <p class="lede">Zusammengestellt aus deinen Einträgen: ${fest} festgelegt, ${offen} offen. Klick auf einen Titel, um ihn zu bearbeiten.</p></div>
+        <div class="row noprint"><button class="btn" id="printBtn" type="button">Drucken / PDF</button></div></div>
+      <div class="filters noprint">
+        <button class="chipbtn" data-allmode="voll" aria-pressed="${allMode === "voll"}">Alles</button>
+        <button class="chipbtn" data-allmode="fest" aria-pressed="${allMode === "fest"}">Nur Festgelegtes</button>
+        <button class="chipbtn" data-allmode="offen" aria-pressed="${allMode === "offen"}">Nur offene Fragen</button>
+      </div>
+      <nav class="toc noprint" aria-label="Inhalt">${areas.map(a => `<a href="#${slug(a.key)}">${esc(a.name)}</a>`).join("")}</nav>`;
+    areas.forEach(a => {
+      const l = inArea(a.key);
+      const f = l.filter(e => e.status === "fest"), i = l.filter(e => e.status === "idee"),
+            o = l.filter(e => e.status === "offen"), w = l.filter(e => e.status === "verworfen");
+      const showFest = allMode !== "offen", showRest = allMode === "voll", showOpen = allMode !== "fest";
+      if (!((showFest && f.length) || (showRest && (i.length || w.length)) || (showOpen && o.length))) return;
+      h += `<section id="${slug(a.key)}"><h2>${esc(a.name)}</h2>`;
+      if (showFest) h += f.map(e => `<div class="fact"><h3><button data-open="${esc(e.id)}">${esc(e.title || "Ohne Titel")}</button></h3>${e.body ? `<p>${esc(e.body)}</p>` : ""}</div>`).join("");
+      if (showRest && i.length) h += `<div class="sub">Ideen, noch nicht entschieden</div><ul class="i">${i.map(e => `<li><button data-open="${esc(e.id)}"><b>${esc(e.title)}</b>${e.body ? ": " + esc(firstLine(e.body)) : ""}</button></li>`).join("")}</ul>`;
+      if (showOpen && o.length) h += `<div class="sub">Offene Fragen</div><ul class="q">${o.map(e => `<li><button data-open="${esc(e.id)}">${esc(e.title)}</button></li>`).join("")}</ul>`;
+      if (showRest && w.length) h += `<div class="sub">Verworfen</div><ul class="w">${w.map(e => `<li>${esc(e.title)}</li>`).join("")}</ul>`;
+      h += `</section>`;
+    });
+    const ms = inArea("manuskript");
+    if (ms.length && allMode === "voll") h += `<section id="b-manuskript"><h2>Manuskript</h2><ul>${ms.map(e => `<li><button data-open="${esc(e.id)}">${esc(e.title)}</button> <span class="hint">(${wordCount(e.body)} Wörter)</span></li>`).join("")}</ul></section>`;
+    return h + `</div>`;
+  }
+  const firstLine = t => { const l = String(t).split("\n")[0]; return l.length > 140 ? l.slice(0, 140) + " …" : l; };
+  const wordCount = t => (String(t || "").trim().match(/\S+/g) || []).length;
+  let allMode = "voll";
+
+  function renderStatus(s) {
+    const list = sorted(byStatus(s)).sort((a, b) => AREAS.findIndex(x => x.key === a.area) - AREAS.findIndex(x => x.key === b.area));
+    return `<div class="head"><div><h1>${esc(statusName(s))}</h1><p class="lede">${list.length} Einträge aus allen Bereichen.</p></div>
+      ${s === "offen" && list.length ? `<button class="btn primary" data-go="fokus">Eine nach der anderen</button>` : ""}</div>
+      ${list.length ? `<div class="list">${list.map(e => cardHtml(e, true)).join("")}</div>` : `<div class="empty">Nichts mit diesem Stand.</div>`}`;
+  }
+
+  function renderSearch() {
+    const q = query.toLowerCase();
+    const list = sorted([...entries.values()].filter(e => (e.title + " " + e.body).toLowerCase().includes(q)));
+    return `<div class="head"><div><h1>Suche: „${esc(query)}“</h1><p class="lede">${list.length} Treffer in allen Bereichen.</p></div>
+      <button class="btn" id="clearSearch">Suche beenden</button></div>
+      ${list.length ? `<div class="list">${list.map(e => cardHtml(e, true)).join("")}</div>` : `<div class="empty">Nichts gefunden.</div>`}`;
+  }
+
+  function renderFocus() {
+    if (!focusQueue.length) focusQueue = sorted(byStatus("offen")).map(e => e.id);
+    focusQueue = focusQueue.filter(id => entries.has(id) && entries.get(id).status === "offen");
+    if (focusIdx >= focusQueue.length) focusIdx = 0;
+    const e = entries.get(focusQueue[focusIdx]);
+    if (!e) return `<div class="focus"><h1>Keine offenen Fragen.</h1><p class="lede">Alles ist entweder festgelegt, eine Idee oder verworfen. Zeit zum Schreiben.</p>
+      <div class="row"><button class="btn primary" data-go="manuskript">Zum Manuskript</button><button class="btn" data-go="uebersicht">Zur Übersicht</button></div></div>`;
+    return `<div class="focus">
+      <span class="progress">FRAGE ${focusIdx + 1} VON ${focusQueue.length} · ${esc(areaName(e.area).toUpperCase())}</span>
+      <h1 class="q">${esc(e.title)}</h1>
+      <p class="hint">Nur diese eine Frage. Schreib auf, was du denkst, auch wenn es unfertig ist.</p>
+      <textarea id="focusBody" aria-label="Deine Gedanken zu dieser Frage">${esc(e.body)}</textarea>
+      <div class="row">
+        <button class="btn primary" data-fx="fest">Festlegen</button>
+        <button class="btn" data-fx="idee">Als Idee behalten</button>
+        <button class="btn" data-fx="skip">Später</button>
+        <button class="btn ghost" data-fx="verworfen">Verwerfen</button>
+      </div></div>`;
+  }
+
+  function render() {
+    renderSide();
+    let h;
+    if (query) h = renderSearch();
+    else if (view === "uebersicht") h = renderOverview();
+    else if (view === "fokus") h = renderFocus();
+    else if (view === "gesamt") h = renderAll();
+    else if (view.startsWith("st-")) h = renderStatus(view.slice(3));
+    else h = renderArea(view);
+    const active = document.activeElement && document.activeElement.id === "focusBody";
+    if (active) return; // nicht unter den Fingern neu zeichnen
+    $("view").innerHTML = h;
+    updateClock();
+  }
+
+  /* ---------- Editor ---------- */
+  let saveTimer = null;
+  function openEditor(id) {
+    editingId = id; dirty = false;
+    fillEditor(true);
+    $("drawer").hidden = false; $("scrim").hidden = false;
+    setTimeout(() => { const e = entries.get(id); (e && e.title ? $("edBody") : $("edTitle")).focus(); }, 30);
+  }
+  function fillEditor(full) {
+    const e = entries.get(editingId); if (!e) return closeEditor();
+    if (full || document.activeElement !== $("edTitle")) $("edTitle").value = e.title || "";
+    if (full || document.activeElement !== $("edBody")) $("edBody").value = e.body || "";
+    $("edArea").value = e.area;
+    $("edStatus").innerHTML = STATUS.map(s => `<button type="button" class="st-${s.key}" data-st="${s.key}" aria-pressed="${e.status === s.key}">${s.name}</button>`).join("");
+    $("savedState").textContent = "Gespeichert";
+    $("delBtn").textContent = "Löschen"; $("delBtn").dataset.armed = "";
+  }
+  async function flush() {
+    if (!editingId || !dirty) return;
+    clearTimeout(saveTimer);
+    const e = { ...entries.get(editingId), title: $("edTitle").value, body: $("edBody").value, updated: new Date().toISOString() };
+    dirty = false;
+    try { await persist(e); $("savedState").textContent = "Gespeichert"; } catch (err) { $("savedState").textContent = "Nicht gespeichert"; }
+  }
+  function markDirty() {
+    dirty = true; $("savedState").textContent = "Speichert …";
+    clearTimeout(saveTimer); saveTimer = setTimeout(() => { flush().then(render); }, 800);
+  }
+  async function closeEditor() {
+    await flush();
+    editingId = null; $("drawer").hidden = true; $("scrim").hidden = true; render();
+  }
+  async function createEntry(area, title, status) {
+    const e = { id: newId(), area, title: title || "", body: "", status: status || (area === "inbox" ? "idee" : "idee"), order: Date.now(), updated: new Date().toISOString() };
+    try { await persist(e); } catch (err) {}
+    return e;
+  }
+
+  /* ---------- Timer ---------- */
+  let tEnd = 0, tTotal = 0, tTick = null;
+  function updateClock() {
+    const c = $("clock"), b = $("timerBar"); if (!c) return;
+    const left = tEnd ? Math.max(0, tEnd - Date.now()) : (tTotal || 15 * 60000);
+    const m = Math.floor(left / 60000), s = Math.floor(left % 60000 / 1000);
+    c.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    if (b) b.style.width = tEnd ? `${100 - left / tTotal * 100}%` : "0%";
+    if (tEnd && left === 0) { tEnd = 0; clearInterval(tTick); toast("Sprint geschafft. Kurz aufstehen, Wasser trinken."); }
+  }
+  function startTimer(min) {
+    clearInterval(tTick);
+    if (!min) { tEnd = 0; tTotal = 0; updateClock(); return; }
+    tTotal = min * 60000; tEnd = Date.now() + tTotal; tTick = setInterval(updateClock, 1000); updateClock();
+  }
+
+  /* ---------- Sicherung ---------- */
+  function toMarkdown() {
+    let md = `# ${META.project || "Buchprojekt"}\n\nStand: ${new Date().toLocaleString("de-DE")}\n`;
+    AREAS.forEach(a => {
+      const l = inArea(a.key); if (!l.length) return;
+      md += `\n## ${a.name}\n`;
+      l.forEach(e => { md += `\n### ${e.title || "Ohne Titel"}  \n*${statusName(e.status)}*\n\n${e.body || ""}\n`; });
+    });
+    return md;
+  }
+  const fileBase = () => (META.project || "Werkbank").replace(/[^\w\-]+/g, "-");
+  const today = () => new Date().toISOString().slice(0, 10);
+  function download(name, text, type) {
+    const url = URL.createObjectURL(new Blob([text], { type }));
+    const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
+  }
+  function lastBackup() { try { return Number(localStorage.getItem(LS_KEY + "-backup")) || 0; } catch (e) { return 0; } }
+  function backup() { download(`${fileBase()}-Text-${today()}.md`, toMarkdown(), "text/markdown"); toast("Textfassung gespeichert (Downloads)"); }
+  function saveFile() {
+    const data = { app: "Werkbank", version: 1, saved: new Date().toISOString(), entries: [...entries.values()] };
+    download(`${fileBase()}-Projekt-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
+    try { localStorage.setItem(LS_KEY + "-backup", String(Date.now())); } catch (e) {}
+    toast("Projekt gesichert (Downloads)"); render();
+  }
+  function openFile() { $("fileIn").click(); }
+  $("fileIn").addEventListener("change", async ev => {
+    const f = ev.target.files[0]; ev.target.value = ""; if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      const list = Array.isArray(data) ? data : data.entries;
+      if (!Array.isArray(list)) throw new Error("format");
+      entries = new Map(list.filter(e => e && e.id).map(e => [e.id, e]));
+      saveLocal(); go("uebersicht"); toast(`Projekt geladen: ${entries.size} Einträge`);
+    } catch (e) { toast("Diese Datei ist keine Projektsicherung der Werkbank."); }
+  });
+
+  /* ---------- Hilfen ---------- */
+  let toastT;
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
+  function ago(iso) {
+    const d = (Date.now() - new Date(iso).getTime()) / 60000;
+    if (d < 1) return "gerade eben"; if (d < 60) return `vor ${Math.round(d)} Min`;
+    if (d < 1440) return `vor ${Math.round(d / 60)} Std`; return new Date(iso).toLocaleDateString("de-DE");
+  }
+  function go(v) { query = ""; $("searchIn").value = ""; view = v; filter = "alle"; if (v === "fokus") { focusQueue = []; focusIdx = 0; } render(); window.scrollTo(0, 0); }
+
+  /* ---------- Ereignisse ---------- */
+  function fillAreaSelect() { $("edArea").innerHTML = AREAS.map(a => `<option value="${a.key}">${esc(a.name)}</option>`).join(""); }
+  fillAreaSelect();
+
+  document.addEventListener("click", async ev => {
+    const t = ev.target.closest("button"); if (!t) return;
+    if (t.dataset.go) return go(t.dataset.go);
+    if (t.dataset.open) return openEditor(t.dataset.open);
+    if (t.dataset.new) { const e = await createEntry(t.dataset.new, ""); render(); return openEditor(e.id); }
+    if (t.dataset.filter) { filter = t.dataset.filter; return render(); }
+    if (t.dataset.timer !== undefined) return startTimer(Number(t.dataset.timer));
+    if (t.dataset.statusJump) return go("st-" + t.dataset.statusJump);
+    if (t.id === "clearSearch") { query = ""; $("searchIn").value = ""; return render(); }
+    if (t.id === "backupBtn") return backup();
+    if (t.id === "printBtn") return window.print();
+    if (t.id === "updBtn") return checkUpdates();
+    if (t.dataset.allmode) { allMode = t.dataset.allmode; return render(); }
+    if (t.id === "saveFileBtn" || t.id === "saveFileBtn2") return saveFile();
+    if (t.id === "openFileBtn") return openFile();
+    if (t.dataset.st && editingId) {
+      const e = { ...entries.get(editingId), title: $("edTitle").value, body: $("edBody").value, status: t.dataset.st, updated: new Date().toISOString() };
+      dirty = false; await persist(e).catch(() => {}); fillEditor(false); return render();
+    }
+    if (t.dataset.fx) {
+      const id = focusQueue[focusIdx], e = entries.get(id); if (!e) return;
+      const body = $("focusBody") ? $("focusBody").value : e.body;
+      if (t.dataset.fx === "skip") {
+        if (body !== e.body) await persist({ ...e, body, updated: new Date().toISOString() }).catch(() => {});
+        focusIdx = (focusIdx + 1) % Math.max(1, focusQueue.length);
+      } else {
+        await persist({ ...e, body, status: t.dataset.fx, updated: new Date().toISOString() }).catch(() => {});
+        toast(t.dataset.fx === "fest" ? "Festgelegt. Eins weniger." : t.dataset.fx === "idee" ? "Als Idee behalten." : "Verworfen.");
+      }
+      document.activeElement && document.activeElement.blur();
+      return render();
+    }
+  });
+  $("closeBtn").onclick = closeEditor;
+  $("scrim").onclick = closeEditor;
+  $("delBtn").onclick = async () => {
+    const b = $("delBtn");
+    if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Wirklich löschen?"; return; }
+    const id = editingId; editingId = null; dirty = false;
+    $("drawer").hidden = true; $("scrim").hidden = true;
+    await removeEntry(id); toast("Gelöscht"); render();
+  };
+  $("edTitle").addEventListener("input", markDirty);
+  $("edBody").addEventListener("input", markDirty);
+  $("edArea").addEventListener("change", async () => {
+    const e = { ...entries.get(editingId), title: $("edTitle").value, body: $("edBody").value, area: $("edArea").value, updated: new Date().toISOString() };
+    dirty = false; await persist(e).catch(() => {}); toast(`Verschoben nach „${areaName(e.area)}“`); render();
+  });
+  $("captureForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const v = $("captureIn").value.trim(); if (!v) return;
+    $("captureIn").value = "";
+    await createEntry("inbox", v, "idee"); toast("Geparkt"); render();
+  });
+  let sT;
+  $("searchIn").addEventListener("input", () => { clearTimeout(sT); sT = setTimeout(() => { query = $("searchIn").value.trim(); render(); }, 150); });
+  document.addEventListener("keydown", ev => {
+    const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "");
+    if (ev.key === "Escape" && editingId) { ev.preventDefault(); closeEditor(); return; }
+    if (typing || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (ev.key === "/") { ev.preventDefault(); $("captureIn").focus(); }
+    if (ev.key === "n" || ev.key === "N") {
+      ev.preventDefault();
+      const area = AREAS.some(a => a.key === view) ? view : "inbox";
+      createEntry(area, "").then(e => { render(); openEditor(e.id); });
+    }
+  });
+  window.addEventListener("beforeunload", () => { flush(); });
+
+  $("lockForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const pass = $("lockPass").value;
+    if (!pass) return;
+    if (!remoteEnv) remoteEnv = await fetchEnv();
+    const r = await unlock(pass, $("lockRemember").checked);
+    if (!r) { $("lockMsg").textContent = remoteEnv ? "Das Passwort stimmt nicht." : "Keine Verbindung. Versuch es mit Internet nochmal."; return; }
+    $("lockPass").value = "";
+    reportMerge(r, true);
+  });
+
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+
+  render();
+  initStore();
+})();
+</script>
+</body>
+</html>
