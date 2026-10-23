@@ -1,7 +1,7 @@
 // Offline-Speicher der Werkbank.
 // Eigene Dateien: erst Netz (damit Updates sofort ankommen), sonst die gespeicherte Kopie.
 // Schriften von Google: einmal laden, danach aus dem Speicher.
-const CACHE = "werkbank-v1";
+const CACHE = "werkbank-v2";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-512.png", "data.enc.json"];
 
 self.addEventListener("install", event => {

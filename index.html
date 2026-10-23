@@ -219,6 +219,24 @@ textarea { resize: vertical; min-height: 280px; line-height: 1.6; }
 }
 kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
 
+/* Zusammenfassungen */
+.sums { display: flex; flex-direction: column; gap: 12px; }
+.summary {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+}
+.sum-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sum-head h2 { font-size: 1.15rem; }
+.summary p { margin: 0; white-space: pre-line; max-width: 70ch; line-height: 1.65; }
+.summary .stale { font-size: .88rem; color: var(--offen); background: var(--offen-soft); border-radius: 6px; padding: 6px 10px; align-self: flex-start; }
+.addsum { align-self: flex-start; }
+.sum-empty { text-align: left; border: 2px dashed var(--line); background: transparent; border-radius: var(--r); padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; }
+.sum-empty:hover { border-color: var(--accent); }
+.sum-empty span { color: var(--muted); font-size: .92rem; }
+.list-h { font-size: 1rem; color: var(--muted); font-family: var(--f-mono); text-transform: uppercase; letter-spacing: .07em; font-weight: 500; }
+.doc .summary { background: transparent; border: 0; padding: 0; }
+.doc .summary .sum-head h2 { font-size: 1.05rem; border: 0; padding: 0; }
+
 /* Passwortsperre */
 .lock { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: grid; place-items: center; padding: 16px; }
 .lockbox { width: min(380px, 100%); display: flex; flex-direction: column; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; box-shadow: var(--shadow); }
@@ -292,7 +310,7 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
   </div>
   <div class="body">
     <input class="title-in" id="edTitle" type="text" placeholder="Titel" aria-label="Titel">
-    <div class="field"><span>Stand</span><div class="seg" id="edStatus"></div></div>
+    <div class="field" id="edStatusField"><span>Stand</span><div class="seg" id="edStatus"></div></div>
     <label class="field"><span>Bereich</span><select id="edArea"></select></label>
     <label class="field"><span>Notiz</span><textarea id="edBody" placeholder="Schreib einfach los. Wird automatisch gespeichert."></textarea></label>
   </div>
@@ -445,8 +463,23 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
   let focusIdx = 0;
 
   const sorted = list => list.sort((a, b) => (a.order || 0) - (b.order || 0) || String(a.title).localeCompare(String(b.title), "de"));
-  const inArea = k => sorted([...entries.values()].filter(e => e.area === k));
-  const byStatus = s => [...entries.values()].filter(e => e.status === s);
+  const isSum = e => e.kind === "summary";
+  const inArea = k => sorted([...entries.values()].filter(e => e.area === k && !isSum(e)));
+  const summariesOf = k => sorted([...entries.values()].filter(e => e.area === k && isSum(e)));
+  const byStatus = s => [...entries.values()].filter(e => e.status === s && !isSum(e));
+  function staleSince(sum) {
+    const t = ts(sum.updated);
+    return inArea(sum.area).some(e => ts(e.updated) > t);
+  }
+  function summaryHtml(e, opts = {}) {
+    const stale = opts.noStale ? false : staleSince(e);
+    return `<section class="summary">
+      <div class="sum-head"><h2>${esc(e.title || "Zusammenfassung")}</h2>
+        <button class="btn small noprint" data-open="${esc(e.id)}">Bearbeiten</button></div>
+      ${e.body ? `<p>${esc(e.body)}</p>` : `<p class="hint">Noch leer. Klick auf „Bearbeiten“ und schreib in ein paar Sätzen, was hier gilt.</p>`}
+      ${stale ? `<p class="stale noprint">Seit dieser Zusammenfassung hat sich in diesem Bereich etwas geändert. Passt sie noch?</p>` : ""}
+    </section>`;
+  }
 
   /* ---------- Seitenleiste ---------- */
   function renderSide() {
@@ -477,7 +510,7 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
     return `<button class="card st-${esc(e.status)} ${e.status === "verworfen" ? "weg" : ""}" data-open="${esc(e.id)}">
       <span class="t">${esc(e.title || "Ohne Titel")}</span>
       ${body ? `<span class="b">${esc(body)}</span>` : ""}
-      <span class="meta"><span class="tag s st-${esc(e.status)}">${esc(statusName(e.status))}</span>${showArea ? `<span class="tag">${esc(areaName(e.area))}</span>` : ""}</span>
+      <span class="meta">${isSum(e) ? `<span class="tag">Zusammenfassung</span>` : `<span class="tag s st-${esc(e.status)}">${esc(statusName(e.status))}</span>`}${showArea ? `<span class="tag">${esc(areaName(e.area))}</span>` : ""}</span>
     </button>`;
   }
 
@@ -508,7 +541,7 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
         <span class="hint">Ein kurzer Block, eine Aufgabe. Danach Pause.</span>
       </section>
     </div>
-    <section class="box"><div class="row"><h2>Deine Welt auf einer Seite</h2><span class="hint">Alles Festgelegte, alle Ideen und offenen Fragen, nach Bereichen sortiert.</span>
+    <section class="box"><div class="row"><h2>Deine Welt auf einer Seite</h2><span class="hint">Die Zusammenfassungen aller Bereiche zum Durchlesen, auf Wunsch mit allen Details.</span>
       <button class="btn small" data-go="gesamt" style="margin-left:auto">Öffnen</button></div></section>
     <div class="stats">${STATUS.map(s => `<button class="stat st-${s.key}" data-status-jump="${s.key}"><b>${byStatus(s.key).length}</b><span>${s.name}</span></button>`).join("")}</div>`;
     if (inbox.length) h += `<section class="box"><div class="row"><h2>Im Parkplatz</h2><span class="hint">${inbox.length} ${inbox.length === 1 ? "Gedanke wartet" : "Gedanken warten"} aufs Einsortieren.</span>
@@ -526,9 +559,16 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
     const a = AREAS.find(x => x.key === key);
     let list = inArea(key);
     if (filter !== "alle") list = list.filter(e => e.status === filter);
+    const sums = summariesOf(key);
     let h = `<div class="head"><div><h1>${esc(a.name)}</h1><p class="lede">${esc(a.hint)}</p></div>
-      <button class="btn primary" data-new="${key}">Neuer Eintrag</button></div>
-      <div class="filters">${[{ key: "alle", name: "Alle" }, ...STATUS].map(s =>
+      <button class="btn primary" data-new="${key}">Neuer Eintrag</button></div>`;
+    if (key !== "inbox") {
+      h += sums.length ? `<div class="sums">${sums.map(e => summaryHtml(e)).join("")}
+          <button class="btn small ghost addsum" data-newsum="${key}">Weitere Zusammenfassung hinzufügen</button></div>`
+        : `<button class="sum-empty" data-newsum="${key}"><b>Zusammenfassung schreiben</b><span>Ein Textblock, der diesen Bereich in eigenen Worten erklärt.</span></button>`;
+      h += `<h2 class="list-h">Einzelne Einträge</h2>`;
+    }
+    h += `<div class="filters">${[{ key: "alle", name: "Alle" }, ...STATUS].map(s =>
         `<button class="chipbtn" data-filter="${s.key}" aria-pressed="${filter === s.key}">${s.name}</button>`).join("")}</div>`;
     h += list.length ? `<div class="list">${list.map(e => cardHtml(e, false)).join("")}</div>`
       : `<div class="empty">${filter === "alle" ? "Hier ist noch nichts. Leg mit „Neuer Eintrag“ los." : "Nichts mit diesem Stand."}</div>`;
@@ -537,13 +577,14 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
 
   function renderAll() {
     const slug = k => "b-" + k;
-    const areas = AREAS.filter(a => a.key !== "manuskript" && inArea(a.key).length);
+    const areas = AREAS.filter(a => a.key !== "manuskript" && a.key !== "inbox" && (inArea(a.key).length || summariesOf(a.key).length));
     const fest = byStatus("fest").length, offen = byStatus("offen").length;
     let h = `<div class="doc">
       <div class="head"><div><h1>Deine Welt auf einer Seite</h1>
-        <p class="lede">Zusammengestellt aus deinen Einträgen: ${fest} festgelegt, ${offen} offen. Klick auf einen Titel, um ihn zu bearbeiten.</p></div>
+        <p class="lede">${allMode === "sum" ? "Die Zusammenfassungen aller Bereiche, untereinander. Unter „Alles“ siehst du zusätzlich jeden einzelnen Eintrag." : `Zusammengestellt aus deinen Einträgen: ${fest} festgelegt, ${offen} offen. Klick auf einen Titel, um ihn zu bearbeiten.`}</p></div>
         <div class="row noprint"><button class="btn" id="printBtn" type="button">Drucken / PDF</button></div></div>
       <div class="filters noprint">
+        <button class="chipbtn" data-allmode="sum" aria-pressed="${allMode === "sum"}">Zusammenfassungen</button>
         <button class="chipbtn" data-allmode="voll" aria-pressed="${allMode === "voll"}">Alles</button>
         <button class="chipbtn" data-allmode="fest" aria-pressed="${allMode === "fest"}">Nur Festgelegtes</button>
         <button class="chipbtn" data-allmode="offen" aria-pressed="${allMode === "offen"}">Nur offene Fragen</button>
@@ -553,9 +594,13 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
       const l = inArea(a.key);
       const f = l.filter(e => e.status === "fest"), i = l.filter(e => e.status === "idee"),
             o = l.filter(e => e.status === "offen"), w = l.filter(e => e.status === "verworfen");
-      const showFest = allMode !== "offen", showRest = allMode === "voll", showOpen = allMode !== "fest";
-      if (!((showFest && f.length) || (showRest && (i.length || w.length)) || (showOpen && o.length))) return;
+      const sums = summariesOf(a.key);
+      const showSum = allMode === "sum" || allMode === "voll";
+      const showFest = allMode === "voll" || allMode === "fest", showRest = allMode === "voll", showOpen = allMode === "voll" || allMode === "offen";
+      if (!((showSum && sums.length) || (showFest && f.length) || (showRest && (i.length || w.length)) || (showOpen && o.length))) return;
       h += `<section id="${slug(a.key)}"><h2>${esc(a.name)}</h2>`;
+      if (showSum) h += sums.map(e => summaryHtml(e, { noStale: allMode === "voll" })).join("");
+      if (allMode === "voll" && sums.length && f.length) h += `<div class="sub">Festgelegt im Einzelnen</div>`;
       if (showFest) h += f.map(e => `<div class="fact"><h3><button data-open="${esc(e.id)}">${esc(e.title || "Ohne Titel")}</button></h3>${e.body ? `<p>${esc(e.body)}</p>` : ""}</div>`).join("");
       if (showRest && i.length) h += `<div class="sub">Ideen, noch nicht entschieden</div><ul class="i">${i.map(e => `<li><button data-open="${esc(e.id)}"><b>${esc(e.title)}</b>${e.body ? ": " + esc(firstLine(e.body)) : ""}</button></li>`).join("")}</ul>`;
       if (showOpen && o.length) h += `<div class="sub">Offene Fragen</div><ul class="q">${o.map(e => `<li><button data-open="${esc(e.id)}">${esc(e.title)}</button></li>`).join("")}</ul>`;
@@ -568,7 +613,7 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
   }
   const firstLine = t => { const l = String(t).split("\n")[0]; return l.length > 140 ? l.slice(0, 140) + " …" : l; };
   const wordCount = t => (String(t || "").trim().match(/\S+/g) || []).length;
-  let allMode = "voll";
+  let allMode = "sum";
 
   function renderStatus(s) {
     const list = sorted(byStatus(s)).sort((a, b) => AREAS.findIndex(x => x.key === a.area) - AREAS.findIndex(x => x.key === b.area));
@@ -633,6 +678,8 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
     if (full || document.activeElement !== $("edTitle")) $("edTitle").value = e.title || "";
     if (full || document.activeElement !== $("edBody")) $("edBody").value = e.body || "";
     $("edArea").value = e.area;
+    $("edStatusField").hidden = isSum(e);
+    $("edBody").placeholder = isSum(e) ? "Fasse diesen Bereich in deinen Worten zusammen. Wird automatisch gespeichert." : "Schreib einfach los. Wird automatisch gespeichert.";
     $("edStatus").innerHTML = STATUS.map(s => `<button type="button" class="st-${s.key}" data-st="${s.key}" aria-pressed="${e.status === s.key}">${s.name}</button>`).join("");
     $("savedState").textContent = "Gespeichert";
     $("delBtn").textContent = "Löschen"; $("delBtn").dataset.armed = "";
@@ -652,8 +699,9 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
     await flush();
     editingId = null; $("drawer").hidden = true; $("scrim").hidden = true; render();
   }
-  async function createEntry(area, title, status) {
-    const e = { id: newId(), area, title: title || "", body: "", status: status || (area === "inbox" ? "idee" : "idee"), order: Date.now(), updated: new Date().toISOString() };
+  async function createEntry(area, title, status, kind) {
+    const e = { id: newId(), area, title: title || "", body: "", status: status || "idee", order: Date.now(), updated: new Date().toISOString() };
+    if (kind) e.kind = kind;
     try { await persist(e); } catch (err) {}
     return e;
   }
@@ -678,8 +726,9 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
   function toMarkdown() {
     let md = `# ${META.project || "Buchprojekt"}\n\nStand: ${new Date().toLocaleString("de-DE")}\n`;
     AREAS.forEach(a => {
-      const l = inArea(a.key); if (!l.length) return;
+      const l = inArea(a.key), sm = summariesOf(a.key); if (!l.length && !sm.length) return;
       md += `\n## ${a.name}\n`;
+      sm.forEach(e => { md += `\n### ${e.title || "Zusammenfassung"}\n\n${e.body || ""}\n`; });
       l.forEach(e => { md += `\n### ${e.title || "Ohne Titel"}  \n*${statusName(e.status)}*\n\n${e.body || ""}\n`; });
     });
     return md;
@@ -729,6 +778,11 @@ kbd { font-family: var(--f-mono); font-size: .75rem; border: 1px solid var(--lin
     const t = ev.target.closest("button"); if (!t) return;
     if (t.dataset.go) return go(t.dataset.go);
     if (t.dataset.open) return openEditor(t.dataset.open);
+    if (t.dataset.newsum) {
+      const k = t.dataset.newsum, first = !summariesOf(k).length;
+      const e = await createEntry(k, first ? `Zusammenfassung: ${areaName(k)}` : "", "fest", "summary");
+      render(); return openEditor(e.id);
+    }
     if (t.dataset.new) { const e = await createEntry(t.dataset.new, ""); render(); return openEditor(e.id); }
     if (t.dataset.filter) { filter = t.dataset.filter; return render(); }
     if (t.dataset.timer !== undefined) return startTimer(Number(t.dataset.timer));

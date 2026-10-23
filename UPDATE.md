@@ -11,6 +11,7 @@ Diese App läuft über GitHub Pages und funktioniert nach dem ersten Öffnen off
 1. `WERKBANK_PASS=… node tools/werkbank.mjs decrypt data.enc.json > /tmp/inhalt.json`
 2. Einträge ändern oder ergänzen. Jede geänderte Zeile bekommt ein neues `updated` (ISO-Zeit), sonst übernimmt die App sie nicht.
    Gelöschte Einträge kommen mit Zeitstempel in `deleted`.
+   Zusammenfassungen sind Einträge mit `"kind": "summary"`; sie stehen oben im jeweiligen Bereich. Zeitstempel nie in die Zukunft setzen.
 3. `WERKBANK_PASS=… node tools/werkbank.mjs encrypt /tmp/inhalt.json > data.enc.json`
 4. Committen und pushen. Die App holt die Änderungen beim nächsten Öffnen mit Internet und führt sie mit lokalen Änderungen zusammen (der neuere Stand pro Eintrag gewinnt).
 
